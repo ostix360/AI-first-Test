@@ -1,5 +1,7 @@
-from transformers import BertTokenizer
+import torch
+from transformers import BertTokenizer, AutoModelForSequenceClassification
 
+checkpoint = "distilbert-base-uncased-finetuned-sst-2-english"
 tokenizer = BertTokenizer.from_pretrained("bert-base-cased")
 
 # Encode text
@@ -13,4 +15,10 @@ print(ids)
 decoded_string = tokenizer.decode(ids)
 print(decoded_string)
 
-tokenizer.save_pretrained("tokenizer")
+inputs = torch.tensor([ids])
+
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+
+output = model(inputs)
+
+print(output.logits)
