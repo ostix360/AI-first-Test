@@ -1,5 +1,7 @@
 import evaluate
 import torch
+from accelerate import Accelerator
+from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from transformers import get_scheduler
 
@@ -58,6 +60,24 @@ def train_with_accelerator(model, train_dataloader, num_epochs, optimizer, lr_sc
             lr_scheduler.step()
             optimizer.zero_grad()
             progress_bar.update(1)
+
+
+def evaluate_with_accelerate(model, eval_dataloader: DataLoader, accelerator: Accelerator):
+    metric = evaluate.load("glue", "mrpc")
+    model.eval()
+
+    eval_dataloader = accelerator.prepare(eval_dataloader)
+    for batch in eval_dataloader:
+        with torch.no_grad():
+            outputs = model(**batch)
+
+        logits = outputs.logits
+        predictions = torch.argmax(logits, dim=-1)
+        metric.add_batch(
+            predictions=accelerator.gather(predictions), references=accelerator.gather(batch["labels"])
+        )
+
+    return metric.compute()
 
 
 def train_model(model, train_dataloader, num_epochs, optimizer, lr_scheduler, device, num_training_steps):
